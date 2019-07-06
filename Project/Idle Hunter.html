@@ -1,0 +1,371 @@
+﻿<!DOCTYPE html>
+<!-- Rhen Niles   5/30/2018 -->
+<!--Credit for enemy images used goes to-->
+<!--http://realmsofauria.blogspot.com/2015/02/d-basic-monsters-goblins.html -->
+<!--Credit for background image goes Might & Magic devs, screenshot from here-->
+<!--https://store.steampowered.com/app/238750/Might__Magic_X__Legacy/ -->
+<html>
+
+<head>
+    <title>Idle Hunter</title>
+
+    <script>
+        // Update the display to reflect current values and state
+        function updateUI() {
+            //update the stats and thier values
+            document.getElementById("Damage").innerHTML = 'Damage: ' + Damage;
+            document.getElementById("Speed").innerHTML = "Attack Speed: " + Speed;
+            document.getElementById("Health").innerHTML = CurrentHealth + '/' + MaxHealth;
+			healthColor("Health", CurrentHealth, MaxHealth);
+            document.getElementById("Armor").innerHTML = "Armor: " + Armor;
+            document.getElementById("Level").innerHTML = "Floor: " + Level;
+            document.getElementById("ExperiencePoints").innerHTML = "EXP: " + EXP;
+            document.getElementById("TargetHP").innerHTML = TargetCurrentHP + '/' + TargetMaxHP;
+			healthColor("TargetHP", TargetCurrentHP, TargetMaxHP);
+            //Show calculated cost for upgrading
+            document.getElementById("BuyDamage").innerHTML = "Buy Damage - Upgrade Cost: " + (Damage * Damage * 2 + 5);
+            document.getElementById("BuyAttackSpeed").innerHTML = "Buy Attack Speed - Upgrade Cost: " + (Speed * Speed * 2 + 5);
+            document.getElementById("BuyHealth").innerHTML = "Buy Health - Upgrade Cost: " + ((MaxHealth - 4) * (MaxHealth - 4) * 2 + 5);
+            document.getElementById("BuyDefense").innerHTML = "Buy Armor - Upgrade Cost: " + (Armor * Armor * 2 + 5);
+            document.getElementById("GoDeeper").innerHTML = "Go Deeper - Upgrade Cost: " + (Level * Level * 2 + 5);
+        }
+		
+		// change the text color of health based on % of max hp for visual feedback
+		function healthColor(elementID, currentHP, maxHP) {
+			var element = document.getElementById(elementID).style;
+			var hpPercent = currentHP / maxHP
+		
+			if (hpPercent >= .7)
+				element.color = "green";
+			else if (hpPercent < .7 && hpPercent > .3)
+				element.color = "yellow";
+			else 
+				element.color = "red";
+		}
+
+        //based on what item you want to buy incrememnt the proper variable
+        function attemptBuy(item, cost) {
+            if (EXP - (cost * cost * 2 + 5) >= 0) {
+                if (item == "Damage")
+                    Damage++;
+                else if (item == "Speed")
+                    Speed++;
+                else if (item == "Health") {
+                    CurrentHealth++;
+                    MaxHealth++;
+                }
+                else if (item == "Armor")
+                    Armor++;
+                else if (item == "Level") {
+                    Level++;
+                    setTargetStats();
+                    CurrentHealth = MaxHealth;
+                }
+                EXP -= (cost * cost * 2 + 5);
+            }
+        }
+
+        // clockTick
+        // Updates the internal timer, calculations, and UI
+        function gameLoop() {
+            if (RespawnTimer == 0) {
+                //increment player and target auto attack timers
+                ticks += Speed;
+                targetTicks += TargetSpeed;
+                //if the timers reach 100, deal damage to the opponent and reset the timer
+                if (targetTicks > 100) {
+                    if (TargetDamage - Armor > 0)
+                        CurrentHealth -= TargetDamage - Armor;
+                    targetTicks -= 100;
+                }
+
+
+
+                if (ticks > 100) {
+                    if (Damage - TargetArmor > 0)
+                        TargetCurrentHP -= Damage - TargetArmor;
+                    ticks -= 100;
+                }
+
+                //if the player loses too much HP reset the fight and lose EXP
+                if (CurrentHealth <= 0) {
+                    CurrentHealth = MaxHealth;
+                    EXP -= Level;
+                    TargetCurrentHP = TargetMaxHP;
+                }
+
+                //if the target loses too much HP reset the fight and gain EXP
+                if (TargetCurrentHP <= 0) {
+                    EXP += Level + ((Level - 1) * Level);
+
+
+                    RespawnTimer = 1;
+                }
+            }
+            else {
+                RespawnTimer++;
+                if (RespawnTimer > 10) {
+                    ticks = 0;
+                    document.getElementById("enemyImg").src = enemyImages[Math.floor(Math.random() * enemyImages.length)];
+                    CurrentHealth = MaxHealth;
+                    TargetMaxHP = 5 + Level * Level;
+                    TargetCurrentHP = TargetMaxHP;
+                    RespawnTimer = 0;
+                }
+            }
+            checkGameOver();
+            saveValues();
+            updateUI();
+        }
+
+        // startTimer
+        // Starts calling the function clockTick every 1/100 second (10 milliseconds)
+        // Calls update UI immediately after page load
+        function startTimer() {
+            getValues();
+            setInterval(gameLoop, 100);
+
+            updateUI();
+        }
+
+        function setTargetStats() {
+            TargetMaxHP = 5 + (Level * Level);
+            TargetCurrentHP = TargetMaxHP;
+            TargetDamage = 1 + Level - 1;
+            TargetArmor = 0 + Math.floor(Level / 3);
+            TargetSpeed = 1 + Math.floor(Level / 2);
+        }
+
+        function checkGameOver() {
+            if (EXP < 0) {
+                alert("Game Over")
+                reset();
+            }
+        }
+        // Create variables and set initial values
+        var RespawnTimer = 0;
+
+        var Damage;
+        var Speed;
+        var MaxHealth;
+        var CurrentHealth;
+        var Armor;
+        var Level;
+        var EXP;
+        var ticks = 0;
+        var TargetMaxHP;
+        var TargetCurrentHP;
+        var TargetDamage;
+        var TargetArmor;
+        var TargetSpeed;
+        var targetTicks = 0;
+        var enemyImages = ['./Images/Enemy1.png', './Images/Enemy2.png', './Images/Enemy3.png', './Images/Enemy4.png', './Images/Enemy5.png'];
+
+        function saveValues() {
+            //save values to local storage
+            localStorage.Damage = Damage;
+            localStorage.Speed = Speed;
+            localStorage.MaxHealth = MaxHealth;
+            localStorage.CurrentHealth = CurrentHealth;
+            localStorage.Armor = Armor;
+            localStorage.Level = Level;
+            localStorage.EXP = EXP;
+            localStorage.TargetMaxHP = TargetMaxHP;
+            localStorage.TargetCurrentHP = TargetCurrentHP;
+            localStorage.TargetDamage = TargetDamage;
+            localStorage.TargetArmor = TargetArmor;
+            localStorage.TargetSpeed = TargetSpeed;
+        }
+        //retreave values
+        function getValues() {
+            if (localStorage.EXP) {
+                Damage = Number(localStorage.Damage);
+                Speed = Number(localStorage.Speed);
+                MaxHealth = Number(localStorage.MaxHealth);
+                CurrentHealth = Number(localStorage.CurrentHealth);
+                Armor = Number(localStorage.Armor);
+                Level = Number(localStorage.Level);
+                EXP = Number(localStorage.EXP);
+
+                TargetMaxHP = Number(localStorage.TargetMaxHP);
+                TargetCurrentHP = Number(localStorage.TargetCurrentHP);
+                TargetDamage = Number(localStorage.TargetDamage);
+                TargetArmor = Number(localStorage.TargetArmor);
+                TargetSpeed = Number(localStorage.TargetSpeed);
+
+                //alert("Save Loaded");
+            }
+            else {
+                // Create variables and set initial values
+                Damage = 1;
+                Speed = 0;
+                MaxHealth = 5;
+                CurrentHealth = MaxHealth;
+                Armor = 0;
+                Level = 1;
+                EXP = 0;
+                ticks = 0;
+                TargetMaxHP = 5;
+                TargetCurrentHP = TargetMaxHP;
+                TargetDamage = 1;
+                TargetArmor = 0;
+                TargetSpeed = 1;
+                targetTicks = 0;
+
+                //alert("No Save");
+            }
+        }
+
+        function reset() {
+            Damage = 1;
+            Speed = 0;
+            MaxHealth = 5;
+            CurrentHealth = MaxHealth;
+            Armor = 0;
+            Level = 1;
+            EXP = 0;
+            ticks = 0;
+            TargetMaxHP = 5;
+            TargetCurrentHP = TargetMaxHP;
+            TargetDamage = 1;
+            TargetArmor = 0;
+            TargetSpeed = 1;
+            targetTicks = 0;
+
+            saveValues();
+        }
+
+        function Attack() {
+            if (RespawnTimer == 0) {
+                TargetCurrentHP -= Damage
+            }
+        }
+    </script>
+
+    <style>
+		html {
+			background-image: url(./images/bg.jpg);
+			background-position: center;
+		}
+	
+		body {
+			width: 50em;
+			margin: 0 auto 0 auto;
+		}
+		
+        #Attack {
+            width: 50em;
+            height: 5em;
+        }
+
+        table {
+            margin-left: 5em;
+            height: 20em;
+            width: 10em;
+            align-self: center;
+            float: left;
+			background-color: silver;
+        }
+		
+			td {
+				padding-left: .5em;
+			}
+
+        .btnSetup {
+            text-align: center;
+        }
+
+            .btnSetup button {
+                height: 2.5em;
+                width: 30em;
+				margin-top: 1.1em;
+            }
+
+        h1 {
+            text-align: center;
+			margin-top: 0;
+			color: silver;
+        }
+		
+		#bottom {
+			margin-bottom: 0;
+		}
+		
+		#Reset {
+			margin: 0 0 1em 1em;
+		}
+
+        #Target {
+            text-align: center;
+			border: 1px double black;
+			background-color: silver;
+			width: 8em;
+			margin: .5em auto 0 auto;
+			padding: .2em 0 .2em 0;
+        }
+
+        #enemyImg {
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+		
+		#TargetHP, #Health {
+			display: inline;
+		}
+    </style>
+</head>
+
+<body onload="startTimer();">
+
+    <h1>Idle Hunter</h1>
+
+    <img src="./Images/Enemy1.png" id="enemyImg" />
+    <div id="Target">Target: <p id="TargetHP"></p></div>
+    <p class="btnSetup">
+        <button id="Attack" onclick="Attack()">Attack!</button>
+    </p>
+
+    <table border="1">
+        <tr>
+            <td id="Damage"></td>
+        </tr>
+        <tr>
+            <td id="Speed"></td>
+        </tr>
+        <tr>
+            <td>Health: <div id="Health"></div></td>
+        </tr>
+        <tr>
+            <td id="Armor"></td>
+        </tr>
+        <tr>
+            <td id="Level"></td>
+        </tr>
+        <tr>
+            <td id="ExperiencePoints"></td>
+        </tr>
+    </table>
+
+    <p class="btnSetup">
+        <button id="BuyDamage" onclick="attemptBuy('Damage', Damage);">Buy Damage</button><br /><a id="DamageCost"> </a>
+    </p>
+    <p class="btnSetup">
+        <button id="BuyAttackSpeed" onclick="attemptBuy('Speed', Speed)">Buy Attack Speed</button><br /><a id="SpeedCost"> </a>
+    </p>
+    <p class="btnSetup">
+        <button id="BuyHealth" onclick="attemptBuy('Health', MaxHealth-4)">Buy Health</button><br /><a id="HealthCost"> </a>
+    </p>
+    <p class="btnSetup">
+        <button id="BuyDefense" onclick="attemptBuy('Armor', Armor)">Buy Armor</button><br /><a id="ArmorCost"> </a>
+    </p>
+    <p class="btnSetup">
+        <button id="GoDeeper" onclick="attemptBuy('Level', Level)">Go Deeper</button><br /><a id="LevelCost"> </a>
+    </p>
+
+    <br /><br /><br /><br />
+    <p id="bottom">
+        <button id="Reset" onclick="reset()">Reset</button>
+    </p>
+</body>
+</html>
